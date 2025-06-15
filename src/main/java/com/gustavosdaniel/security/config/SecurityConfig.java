@@ -1,5 +1,6 @@
 package com.gustavosdaniel.security.config;
 
+import com.gustavosdaniel.security.filter.JwtFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -12,16 +13,19 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity // PARA INDICAR QUE ESSA CLASSE É DE SECURITY
 public class SecurityConfig {
 
+    private JwtFilter jwtFilter;
+
     private UserDetailsService userDetailsService;
 
-    public SecurityConfig(UserDetailsService userDetailsService) {
+    public SecurityConfig(JwtFilter jwtFilter, UserDetailsService userDetailsService) {
+        this.jwtFilter = jwtFilter;
         this.userDetailsService = userDetailsService;
     }
 
@@ -29,14 +33,15 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         return http
-                .csrf(customizer -> customizer.disable())
+                .csrf(customizer -> customizer.disable())// Desabilita CSRF (não necessário para APIs)
                 .authorizeHttpRequests(request -> request
-                        .requestMatchers("register", "login")
+                        .requestMatchers("register", "login")// Libera acesso sem autenticação
                         .permitAll()
                         .anyRequest().authenticated()) // Exige autenticação para TODAS as requisições
-                .httpBasic(Customizer.withDefaults()) //  Permite autenticação via cabeçalho Authorization: Basic <credenciais>
+                .httpBasic(Customizer.withDefaults())  // Habilita autenticação básica (usuário/senha)
                 .sessionManagement(session ->
                     session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) //Desabilita criação de sessões no servidor
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)// Adiciona nosso filtro JWT
                 .build(); //Compila todas as configurações e retorna a cadeia de filtros
     }
 
@@ -60,16 +65,16 @@ public class SecurityConfig {
 //
 //    }
 //
-    @Bean
+    @Bean// Configura como a autenticação vai funcionar
     public AuthenticationProvider authenticationProvider() {
             DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-            provider.setPasswordEncoder(new BCryptPasswordEncoder(12));
-            provider.setUserDetailsService(userDetailsService);
+            provider.setPasswordEncoder(new BCryptPasswordEncoder(12));  // Usa BCrypt forte para senhas
+            provider.setUserDetailsService(userDetailsService); // Define onde buscar usuários
             return provider;
     }
 
-    @Bean
+    @Bean// Expõe o gerenciador de autenticação para o Spring
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
-        return configuration.getAuthenticationManager();
+        return configuration.getAuthenticationManager();// Retorna o gerenciador padrão
     }
 }
