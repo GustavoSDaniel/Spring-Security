@@ -2,13 +2,16 @@ package com.gustavosdaniel.security.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -27,8 +30,10 @@ public class SecurityConfig {
 
         return http
                 .csrf(customizer -> customizer.disable())
-                .authorizeHttpRequests(request -> request.anyRequest().authenticated()) // Exige autenticação para TODAS as requisições
-                .formLogin(Customizer.withDefaults()) //Ativa o formulário de login padrão do Spring Security
+                .authorizeHttpRequests(request -> request
+                        .requestMatchers("register", "login")
+                        .permitAll()
+                        .anyRequest().authenticated()) // Exige autenticação para TODAS as requisições
                 .httpBasic(Customizer.withDefaults()) //  Permite autenticação via cabeçalho Authorization: Basic <credenciais>
                 .sessionManagement(session ->
                     session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) //Desabilita criação de sessões no servidor
@@ -58,8 +63,13 @@ public class SecurityConfig {
     @Bean
     public AuthenticationProvider authenticationProvider() {
             DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-            provider.setPasswordEncoder(NoOpPasswordEncoder.getInstance());
+            provider.setPasswordEncoder(new BCryptPasswordEncoder(12));
             provider.setUserDetailsService(userDetailsService);
             return provider;
-        }
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
+    }
 }

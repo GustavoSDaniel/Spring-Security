@@ -1,6 +1,7 @@
 package com.gustavosdaniel.security.model;
 
 public class Aluno {
+
     private long id;
     private String nome;
     private int matricula;
